@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useAccount, useReadContract } from "wagmi";
+import { useConnection, useReadContract } from "wagmi";
 import { useRouter } from "next/navigation";
 import { sdk } from "@farcaster/miniapp-sdk";
 import { HomeScreen } from "@/components/home-screen";
@@ -82,8 +82,8 @@ function useBill(billId: bigint | undefined): Bill | null {
         paid === 0
           ? ("pending" as const)
           : paid >= share
-          ? ("paid" as const)
-          : ("underpaid" as const),
+            ? ("paid" as const)
+            : ("underpaid" as const),
     };
   });
 
@@ -119,7 +119,7 @@ function BillLoader({
 
 export default function HomeClient() {
   const router = useRouter();
-  const { address, isConnected } = useAccount();
+  const { address, isConnected } = useConnection();
   const [mounted, setMounted] = useState(false);
   const [billMap, setBillMap] = useState<Record<string, Bill>>({});
 
