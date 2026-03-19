@@ -12,14 +12,17 @@ import { parseUnits } from "viem";
 import { BillDetails } from "@/components/bill-details";
 import type { Bill } from "@/components/homepage";
 import contractABI from "../../../contract/abi.json";
+import { Loader2 } from "lucide-react";
 
 const SPLITPAY_ADDRESS =
   "0xE47aa208f9B59b5857E6c54a5198a9a40F4c90C7" as `0x${string}`;
 
+// FIX: all lowercase so stablecoin.toLowerCase() always matches
 const STABLECOIN: Record<string, Bill["currency"]> = {
-  "0xdE9e4C3ce781b4bA68120d6261cbad65ce0aB00b": "cUSDm",
-  "0x456a3D042C0DbD3db53D5489e98dFb038553B0d0": "cKES",
-  "0xe8537a3d056DA446677B9E9d6c5dB704EaAb4787": "cREAL",
+  "0xde9e4c3ce781b4ba68120d6261cbad65ce0ab00b": "cUSDm",
+  "0x456a3d042c0dbd3db53d5489e98dfb038553b0d0": "cKES",
+  "0xe8537a3d056da446677b9e9d6c5db704eaab4787": "cREAL",
+  "0xd8763cba276a3738e6de85b4b3bf5fded6d6ca73": "cEUR",
 };
 
 const ERC20_ABI = [
@@ -49,7 +52,6 @@ type ContractBill = {
   isWithdrawn: boolean;
   createdAt: bigint;
 };
-
 type ContractBillStatus = [
   participants: readonly `0x${string}`[],
   amountsOwed: readonly bigint[],
@@ -69,8 +71,6 @@ export default function BillPage() {
   >("idle");
   const [error, setError] = useState("");
 
-  // ── ALL hooks must be before any early return ──────────────────
-
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -84,7 +84,6 @@ export default function BillPage() {
     args: [billId],
     query: { enabled: mounted && billId > BigInt(0) },
   });
-
   const { data: rawStatus, refetch: refetchStatus } = useReadContract({
     address: SPLITPAY_ADDRESS,
     abi: contractABI.abi,
@@ -98,7 +97,6 @@ export default function BillPage() {
     hash: txHash,
   });
 
-  // Refetch after any successful tx
   useEffect(() => {
     if (isSuccess) {
       refetchBill();
@@ -107,62 +105,68 @@ export default function BillPage() {
     }
   }, [isSuccess]);
 
-  // After approve succeeds, call payShare
   useEffect(() => {
     if (isSuccess && step === "approving") {
-      const myParticipant = rawStatus
-        ? (() => {
-            const statusData = rawStatus as unknown as ContractBillStatus;
-            const [addrs, amountsOwed, amountsPaid] = statusData;
-            const idx = addrs.findIndex(
-              (a) => a.toLowerCase() === address?.toLowerCase(),
-            );
-            if (idx === -1) return null;
-            return {
-              share: fromWei(amountsOwed[idx]),
-              amountPaid: fromWei(amountsPaid[idx]),
-            };
-          })()
-        : null;
-
-      if (!myParticipant) return;
-      const remaining = myParticipant.share - myParticipant.amountPaid;
+      if (!rawStatus) return;
+      const [addrs, amountsOwed, amountsPaid] =
+        rawStatus as unknown as ContractBillStatus;
+      const idx = addrs.findIndex(
+        (a) => a.toLowerCase() === address?.toLowerCase(),
+      );
+      if (idx === -1) return;
+      const remaining = fromWei(amountsOwed[idx]) - fromWei(amountsPaid[idx]);
       if (remaining <= 0) return;
-
-      const amountWei = parseUnits(remaining.toFixed(18), 18);
       setStep("paying");
       writeContract({
         address: SPLITPAY_ADDRESS,
         abi: contractABI.abi,
         functionName: "payShare",
-        args: [billId, amountWei],
+        args: [billId, parseUnits(remaining.toFixed(18), 18)],
       });
     }
   }, [isSuccess, step]);
 
-  // ── Early returns AFTER all hooks ─────────────────────────────
   if (!mounted || !rawBill || !rawStatus) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-teal-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-500 mx-auto mb-3" />
-          <p className="text-gray-500 text-sm">Loading bill...</p>
-        </div>
+      <div
+        style={{
+          minHeight: "100dvh",
+          background: "#0e0e12",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexDirection: "column",
+          gap: "12px",
+        }}
+      >
+        <Loader2
+          size={32}
+          color="#f59e0b"
+          style={{ animation: "spin 1s linear infinite" }}
+        />
+        <p
+          style={{
+            color: "#8b8a96",
+            fontSize: "13px",
+            fontFamily: "var(--font-syne), sans-serif",
+          }}
+        >
+          Loading bill...
+        </p>
       </div>
     );
   }
 
-  // ── Build Bill object ──────────────────────────────────────────
   const billData = rawBill as unknown as ContractBill;
-  const statusData = rawStatus as unknown as ContractBillStatus;
-  const [addrs, amountsOwed, amountsPaid, , names, phoneNumbers] = statusData;
+  const [addrs, amountsOwed, amountsPaid, , names, phoneNumbers] =
+    rawStatus as unknown as ContractBillStatus;
 
   const participants = addrs.map((addr, i) => {
     const share = fromWei(amountsOwed[i]);
     const paid = fromWei(amountsPaid[i]);
     return {
       id: addr,
-      name: names[i] || addr.slice(0, 6) + "...",
+      name: names[i] || `${addr.slice(0, 6)}...`,
       phoneNumber: phoneNumbers[i],
       share,
       amountPaid: paid,
@@ -170,8 +174,8 @@ export default function BillPage() {
         paid === 0
           ? ("pending" as const)
           : paid >= share
-          ? ("paid" as const)
-          : ("underpaid" as const),
+            ? ("paid" as const)
+            : ("underpaid" as const),
     };
   });
 
@@ -179,30 +183,26 @@ export default function BillPage() {
     id: billData.id.toString(),
     title: billData.title,
     totalAmount: fromWei(billData.totalAmount),
-    currency: STABLECOIN[billData.stablecoin] ?? "cUSD",
+    currency: STABLECOIN[billData.stablecoin.toLowerCase()] ?? "cUSDm",
     organizerId: billData.organizer,
-    organizerName: billData.organizer.slice(0, 6) + "...",
+    organizerName: `${billData.organizer.slice(0, 6)}...`,
     participants,
     status: billData.isCompleted ? "completed" : "active",
     createdAt: new Date(Number(billData.createdAt) * 1000),
   };
 
-  // ── Handlers ───────────────────────────────────────────────────
-  const handlePayShare = (billId: string, participantId: string) => {
+  const handlePayShare = (_billId: string, participantId: string) => {
     setError("");
-    const participant = participants.find((p) => p.id === participantId);
-    if (!participant) return;
-
-    const remaining = participant.share - participant.amountPaid;
+    const p = participants.find((p) => p.id === participantId);
+    if (!p) return;
+    const remaining = p.share - p.amountPaid;
     if (remaining <= 0) return;
-
-    const amountWei = parseUnits(remaining.toFixed(18), 18);
     setStep("approving");
     writeContract({
       address: billData.stablecoin,
       abi: ERC20_ABI,
       functionName: "approve",
-      args: [SPLITPAY_ADDRESS, amountWei],
+      args: [SPLITPAY_ADDRESS, parseUnits(remaining.toFixed(18), 18)],
     });
   };
 
@@ -218,33 +218,94 @@ export default function BillPage() {
   };
 
   const isProcessing = isPending || isConfirming;
+  const stepLabel: Record<string, string> = {
+    approving: "Approving tokens…",
+    paying: "Sending payment…",
+    withdrawing: "Withdrawing funds…",
+  };
 
   return (
     <>
       {isProcessing && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-8 max-w-sm w-full text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500 mx-auto mb-4" />
-            <p className="text-gray-900 font-semibold mb-1">
-              {step === "approving" && "Approving tokens..."}
-              {step === "paying" && "Sending payment..."}
-              {step === "withdrawing" && "Withdrawing funds..."}
-            </p>
-            <p className="text-gray-500 text-sm">
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.75)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 50,
+            padding: "20px",
+          }}
+        >
+          <div
+            style={{
+              background: "#16161d",
+              border: "1px solid rgba(255,255,255,0.1)",
+              borderRadius: "20px",
+              padding: "32px 24px",
+              maxWidth: "300px",
+              width: "100%",
+              textAlign: "center",
+            }}
+          >
+            <Loader2
+              size={40}
+              color="#f59e0b"
+              style={{
+                animation: "spin 1s linear infinite",
+                margin: "0 auto 16px",
+              }}
+            />
+            <div
+              style={{
+                fontSize: "16px",
+                fontWeight: 700,
+                color: "#f0eee8",
+                marginBottom: "6px",
+                fontFamily: "var(--font-syne), sans-serif",
+              }}
+            >
+              {stepLabel[step]}
+            </div>
+            <div style={{ fontSize: "12px", color: "#8b8a96" }}>
               {isPending
                 ? "Confirm in your wallet"
-                : "Waiting for confirmation..."}
-            </p>
+                : "Waiting for confirmation…"}
+            </div>
           </div>
         </div>
       )}
 
       {error && (
-        <div className="fixed top-4 left-4 right-4 bg-red-50 border border-red-200 rounded-xl p-4 z-50">
-          <p className="text-red-800 text-sm">{error}</p>
+        <div
+          style={{
+            position: "fixed",
+            top: "16px",
+            left: "16px",
+            right: "16px",
+            background: "rgba(239,68,68,0.1)",
+            border: "1px solid rgba(239,68,68,0.3)",
+            borderRadius: "12px",
+            padding: "12px 14px",
+            zIndex: 50,
+          }}
+        >
+          <p style={{ color: "#ef4444", fontSize: "13px", margin: 0 }}>
+            {error}
+          </p>
           <button
             onClick={() => setError("")}
-            className="text-red-500 text-xs mt-1"
+            style={{
+              color: "#ef4444",
+              fontSize: "11px",
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              marginTop: "4px",
+              padding: 0,
+            }}
           >
             Dismiss
           </button>

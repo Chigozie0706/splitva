@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import {
-  ArrowLeft,
   Plus,
   X,
   Users,
@@ -11,6 +10,7 @@ import {
   AlertCircle,
   CheckCircle,
   Loader2,
+  ExternalLink,
 } from "lucide-react";
 import { Bill, Currency } from "./homepage";
 import {
@@ -28,7 +28,6 @@ interface ParticipantInput {
   wallet: string;
   share: number;
 }
-
 interface CreateBillProps {
   onBack: () => void;
   onCreate: (bill: Omit<Bill, "id" | "createdAt">) => void;
@@ -43,8 +42,35 @@ const STABLECOIN_ADDRESSES: Record<Currency, Address> = {
   cREAL: "0xe8537a3d056DA446677B9E9d6c5dB704EaAb4787",
   cEUR: "0xD8763CBa276a3738E6DE85b4b3bF5FDed6D6cA73",
 };
-
 const CONTRACT_ADDRESS: Address = "0xE47aa208f9B59b5857E6c54a5198a9a40F4c90C7";
+
+const inputStyle = {
+  width: "100%",
+  padding: "10px 12px",
+  background: "rgba(255,255,255,0.05)",
+  border: "1px solid rgba(255,255,255,0.1)",
+  borderRadius: "10px",
+  color: "#f0eee8",
+  fontSize: "14px",
+  outline: "none",
+  fontFamily: "var(--font-syne), 'Syne', sans-serif",
+  transition: "border 0.2s",
+};
+const labelStyle = {
+  display: "block",
+  color: "#8b8a96",
+  fontSize: "11px",
+  fontWeight: 700,
+  letterSpacing: "0.8px",
+  marginBottom: "6px",
+};
+const sectionStyle = {
+  background: "rgba(255,255,255,0.03)",
+  border: "1px solid rgba(255,255,255,0.07)",
+  borderRadius: "14px",
+  padding: "16px",
+  marginBottom: "12px",
+};
 
 export function CreateBill({
   onBack,
@@ -62,7 +88,6 @@ export function CreateBill({
   );
   const [currency, setCurrency] = useState<Currency>("cUSDm");
   const [splitMethod, setSplitMethod] = useState<"equal" | "manual">(
-    // FIX: if voice gave custom shares use manual, otherwise equal
     defaultParticipants ? "manual" : "equal",
   );
   const [error, setError] = useState("");
@@ -80,51 +105,6 @@ export function CreateBill({
   });
   const isProcessing = isPending || isConfirming;
 
-  const addParticipant = () => {
-    setParticipants([
-      ...participants,
-      {
-        id: Date.now().toString(),
-        name: "",
-        phoneNumber: "",
-        wallet: "",
-        share: 0,
-      },
-    ]);
-  };
-
-  const handleBack = () => {
-    const hasData =
-      title || totalAmount || participants.some((p) => p.name || p.wallet);
-    if (hasData && !isProcessing) {
-      if (
-        window.confirm(
-          "You have unsaved changes. Are you sure you want to go back?",
-        )
-      ) {
-        onBack();
-      }
-    } else {
-      onBack();
-    }
-  };
-
-  const removeParticipant = (id: string) => {
-    if (participants.length > 1)
-      setParticipants(participants.filter((p) => p.id !== id));
-  };
-
-  const updateParticipant = (
-    id: string,
-    field: keyof ParticipantInput,
-    value: string | number,
-  ) => {
-    setParticipants(
-      participants.map((p) => (p.id === id ? { ...p, [field]: value } : p)),
-    );
-  };
-
-  // FIX: only recalculate equal shares when user hasn't manually set them
   useEffect(() => {
     if (splitMethod === "equal" && totalAmount) {
       const amount = parseFloat(totalAmount) || 0;
@@ -133,54 +113,49 @@ export function CreateBill({
     }
   }, [totalAmount, participants.length, splitMethod]);
 
+  useEffect(() => {
+    if (isSuccess && hash) {
+      setShowSuccess(true);
+      setTimeout(() => onBack(), 2500);
+    }
+  }, [isSuccess, hash]);
+  useEffect(() => {
+    if (writeError) setError(writeError.message || "Transaction failed");
+  }, [writeError]);
+
   const validateForm = () => {
     if (!isConnected) {
-      setError("Please connect your wallet first");
+      setError("Wallet not connected");
       return false;
     }
     if (!title.trim()) {
-      setError("Please enter a bill title");
-      return false;
-    }
-    if (!totalAmount) {
-      setError("Please enter the total amount");
+      setError("Enter a bill title");
       return false;
     }
     const amount = parseFloat(totalAmount);
-    if (isNaN(amount) || amount <= 0) {
-      setError("Please enter a valid amount greater than 0");
+    if (!totalAmount || isNaN(amount) || amount <= 0) {
+      setError("Enter a valid amount");
       return false;
     }
-
-    // FIX: name validation — warn user to fill in name if empty
     if (participants.some((p) => !p.name.trim())) {
-      setError(
-        "Please enter a name for all participants (tip: you can use their address as the name)",
-      );
+      setError("Enter a name for all participants");
       return false;
     }
-
     for (const p of participants) {
       if (!p.wallet.trim()) {
-        setError(`Please enter wallet address for ${p.name || "participant"}`);
+        setError(`Enter wallet for ${p.name}`);
         return false;
       }
       if (!p.wallet.startsWith("0x") || p.wallet.length !== 42) {
-        setError(`Invalid wallet address for ${p.name}`);
+        setError(`Invalid address for ${p.name}`);
         return false;
       }
     }
-
     if (splitMethod === "manual") {
-      const totalShares = participants.reduce(
-        (sum, p) => sum + (p.share || 0),
-        0,
-      );
-      if (Math.abs(totalShares - amount) > 0.01) {
+      const sum = participants.reduce((s, p) => s + (p.share || 0), 0);
+      if (Math.abs(sum - amount) > 0.01) {
         setError(
-          `Shares total (${totalShares.toFixed(
-            2,
-          )}) must equal bill total (${amount.toFixed(2)})`,
+          `Shares (${sum.toFixed(2)}) must equal total (${amount.toFixed(2)})`,
         );
         return false;
       }
@@ -191,45 +166,35 @@ export function CreateBill({
   const handleCreate = async () => {
     setError("");
     if (!validateForm()) return;
-
     const amount = parseFloat(totalAmount);
-    let finalParticipants = participants;
-    if (splitMethod === "equal") {
-      const share = amount / participants.length;
-      finalParticipants = participants.map((p) => ({ ...p, share }));
-    }
-
+    const finalParticipants =
+      splitMethod === "equal"
+        ? participants.map((p) => ({
+            ...p,
+            share: amount / participants.length,
+          }))
+        : participants;
     try {
-      const stablecoinAddress = STABLECOIN_ADDRESSES[currency];
-      const totalAmountWei = parseUnits(amount.toString(), 18);
-      const participantsData = finalParticipants.map((p) => ({
-        wallet: p.wallet as Address,
-        share: parseUnits(p.share.toString(), 18),
-        name: p.name,
-        phoneNumber: p.phoneNumber || "0", // FIX: contract requires non-empty string
-      }));
-
       writeContract({
         address: CONTRACT_ADDRESS,
         abi: contractABI.abi,
         functionName: "createBill",
-        args: [title, totalAmountWei, stablecoinAddress, participantsData],
+        args: [
+          title,
+          parseUnits(amount.toString(), 18),
+          STABLECOIN_ADDRESSES[currency],
+          finalParticipants.map((p) => ({
+            wallet: p.wallet as Address,
+            share: parseUnits(p.share.toString(), 18),
+            name: p.name,
+            phoneNumber: p.phoneNumber || "0",
+          })),
+        ],
       });
     } catch (err: any) {
-      setError(err.message || "Failed to create bill. Please try again.");
+      setError(err.message || "Failed to create bill");
     }
   };
-
-  useEffect(() => {
-    if (isSuccess && hash) {
-      setShowSuccess(true);
-      setTimeout(() => onBack(), 2000);
-    }
-  }, [isSuccess, hash]);
-
-  useEffect(() => {
-    if (writeError) setError(writeError.message || "Transaction failed");
-  }, [writeError]);
 
   const canSubmit =
     title &&
@@ -238,351 +203,570 @@ export function CreateBill({
     !isProcessing;
 
   return (
-    <>
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm">
-        <div className="max-w-2xl mx-auto px-4 sm:px-6 py-4">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={handleBack}
-              disabled={isProcessing}
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors -ml-2 disabled:opacity-50"
+    <div
+      style={{
+        background: "#0e0e12",
+        minHeight: "100vh",
+        fontFamily: "var(--font-syne), 'Syne', sans-serif",
+        paddingBottom: "100px",
+      }}
+    >
+      {/* Success overlay */}
+      {showSuccess && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.8)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 50,
+            padding: "20px",
+          }}
+        >
+          <div
+            style={{
+              background: "#16161d",
+              border: "1px solid rgba(16,185,129,0.3)",
+              borderRadius: "20px",
+              padding: "32px 24px",
+              maxWidth: "320px",
+              width: "100%",
+              textAlign: "center",
+            }}
+          >
+            <div
+              style={{
+                width: "64px",
+                height: "64px",
+                borderRadius: "50%",
+                background: "rgba(16,185,129,0.1)",
+                border: "1px solid rgba(16,185,129,0.3)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                margin: "0 auto 16px",
+              }}
             >
-              <ArrowLeft className="w-5 h-5 text-gray-700" />
-            </button>
-            <div className="flex-1">
-              <h1 className="text-gray-900 text-lg font-semibold">
-                Create New Bill
-              </h1>
-              <p className="text-gray-500 text-sm">
-                Split expenses with friends
-              </p>
+              <CheckCircle size={28} color="#10b981" />
             </div>
-            {!isConnected && (
-              <div className="bg-orange-100 text-orange-800 text-xs px-3 py-1 rounded-full">
-                Not connected
-              </div>
+            <div
+              style={{
+                fontSize: "20px",
+                fontWeight: 800,
+                color: "#f0eee8",
+                marginBottom: "8px",
+              }}
+            >
+              Bill Created!
+            </div>
+            <div
+              style={{
+                fontSize: "13px",
+                color: "#8b8a96",
+                marginBottom: "16px",
+              }}
+            >
+              Your bill is live on Celo
+            </div>
+            {hash && (
+              <a
+                href={`https://celoscan.io/tx/${hash}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "6px",
+                  color: "#10b981",
+                  fontSize: "12px",
+                  fontFamily: "'DM Mono', monospace",
+                  textDecoration: "none",
+                }}
+              >
+                {hash.slice(0, 12)}...{hash.slice(-8)}{" "}
+                <ExternalLink size={10} />
+              </a>
             )}
           </div>
         </div>
-      </div>
-
-      {/* Success Modal */}
-      {showSuccess && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-8 max-w-sm w-full text-center">
-            <div className="bg-emerald-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-              <CheckCircle className="w-8 h-8 text-emerald-600" />
-            </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">
-              Bill Created!
-            </h2>
-            <p className="text-gray-600 mb-4">
-              Your bill has been created successfully
-            </p>
-            <div className="bg-gray-50 rounded-lg p-3">
-              <p className="text-sm text-gray-600 mb-1">Transaction Hash:</p>
-              <p className="text-xs font-mono text-gray-900 break-all">
-                {hash?.substring(0, 10)}...{hash?.substring(hash.length - 8)}
-              </p>
-            </div>
-          </div>
-        </div>
       )}
 
-      {/* Processing Overlay */}
+      {/* Processing overlay */}
       {isProcessing && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40 p-4">
-          <div className="bg-white rounded-2xl p-8 max-w-sm w-full text-center">
-            <Loader2 className="w-12 h-12 text-emerald-600 animate-spin mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              {isPending ? "Confirm in wallet..." : "Processing transaction..."}
-            </h3>
-            <p className="text-sm text-gray-600">
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.7)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 40,
+            padding: "20px",
+          }}
+        >
+          <div
+            style={{
+              background: "#16161d",
+              border: "1px solid rgba(255,255,255,0.1)",
+              borderRadius: "20px",
+              padding: "32px 24px",
+              maxWidth: "300px",
+              width: "100%",
+              textAlign: "center",
+            }}
+          >
+            <Loader2
+              size={40}
+              color="#f59e0b"
+              style={{
+                animation: "spin 1s linear infinite",
+                margin: "0 auto 16px",
+              }}
+            />
+            <div
+              style={{
+                fontSize: "16px",
+                fontWeight: 700,
+                color: "#f0eee8",
+                marginBottom: "6px",
+              }}
+            >
+              {isPending ? "Confirm in wallet…" : "Confirming on Celo…"}
+            </div>
+            <div style={{ fontSize: "12px", color: "#8b8a96" }}>
               {isPending
-                ? "Please confirm the transaction in your wallet"
-                : "Waiting for blockchain confirmation..."}
-            </p>
+                ? "Check your wallet app"
+                : "Usually takes a few seconds"}
+            </div>
           </div>
         </div>
       )}
 
-      {/* Form */}
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 space-y-4">
+      <div style={{ padding: "16px 20px" }}>
+        {/* Error */}
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <p className="text-red-800 text-sm font-medium">Error</p>
-              <p className="text-red-700 text-sm mt-1">{error}</p>
-            </div>
+          <div
+            style={{
+              background: "rgba(239,68,68,0.08)",
+              border: "1px solid rgba(239,68,68,0.2)",
+              borderRadius: "12px",
+              padding: "12px 14px",
+              marginBottom: "12px",
+              display: "flex",
+              alignItems: "flex-start",
+              gap: "8px",
+            }}
+          >
+            <AlertCircle
+              size={16}
+              color="#ef4444"
+              style={{ flexShrink: 0, marginTop: "1px" }}
+            />
+            <span style={{ color: "#ef4444", fontSize: "13px", flex: 1 }}>
+              {error}
+            </span>
             <button
               onClick={() => setError("")}
-              className="text-red-400 hover:text-red-600"
+              style={{
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                padding: 0,
+              }}
             >
-              <X className="w-4 h-4" />
+              <X size={14} color="#ef4444" />
             </button>
           </div>
         )}
 
         {/* Bill Details */}
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <h2 className="text-gray-900 font-semibold mb-4 flex items-center gap-2">
-            <span className="text-emerald-600">📝</span> Bill Details
-          </h2>
-          <div className="space-y-4">
+        <div style={sectionStyle}>
+          <div
+            style={{
+              fontSize: "13px",
+              fontWeight: 700,
+              color: "#f0eee8",
+              marginBottom: "14px",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+            }}
+          >
+            📝 Bill Details
+          </div>
+          <div style={{ marginBottom: "12px" }}>
+            <label style={labelStyle}>BILL TITLE *</label>
+            <input
+              style={inputStyle}
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g. Dinner at KFC"
+              disabled={isProcessing}
+            />
+          </div>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: "10px",
+            }}
+          >
             <div>
-              <label className="block text-gray-700 text-sm font-medium mb-2">
-                Bill Title *
-              </label>
+              <label style={labelStyle}>AMOUNT *</label>
               <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g., Dinner at KFC"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                style={inputStyle}
+                type="number"
+                value={totalAmount}
+                onChange={(e) => setTotalAmount(e.target.value)}
+                placeholder="0.00"
+                step="0.01"
+                min="0"
                 disabled={isProcessing}
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-gray-700 text-sm font-medium mb-2">
-                  Total Amount *
-                </label>
-                <input
-                  type="number"
-                  value={totalAmount}
-                  onChange={(e) => setTotalAmount(e.target.value)}
-                  placeholder="0.00"
-                  step="0.01"
-                  min="0"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
-                  disabled={isProcessing}
-                />
-              </div>
-              <div>
-                <label className="block text-gray-700 text-sm font-medium mb-2">
-                  Currency *
-                </label>
-                <select
-                  value={currency}
-                  onChange={(e) => setCurrency(e.target.value as Currency)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white"
-                  disabled={isProcessing}
-                >
-                  <option value="cUSDm">cUSDm 💵</option>
-                  <option value="cKES">cKES 🇰🇪</option>
-                  <option value="cREAL">cREAL 🇧🇷</option>
-                  <option value="cEUR">cEUR 🇪🇺</option>
-                </select>
-              </div>
+            <div>
+              <label style={labelStyle}>CURRENCY *</label>
+              <select
+                style={{ ...inputStyle, appearance: "none" as const }}
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value as Currency)}
+                disabled={isProcessing}
+              >
+                <option value="cUSDm">cUSDm 💵</option>
+                <option value="cKES">cKES 🇰🇪</option>
+                <option value="cREAL">cREAL 🇧🇷</option>
+                <option value="cEUR">cEUR 🇪🇺</option>
+              </select>
             </div>
           </div>
         </div>
 
         {/* Split Method */}
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <h2 className="text-gray-900 font-semibold mb-4 flex items-center gap-2">
-            <span className="text-emerald-600">⚖️</span> Split Method
-          </h2>
-          <div className="grid grid-cols-2 gap-4">
-            <button
-              onClick={() => setSplitMethod("equal")}
-              disabled={isProcessing}
-              className={`p-4 rounded-xl border-2 transition-all ${
-                splitMethod === "equal"
-                  ? "border-emerald-500 bg-emerald-50 shadow-md"
-                  : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
-              } disabled:opacity-50`}
-            >
-              <Users
-                className={`w-6 h-6 mx-auto mb-2 ${
-                  splitMethod === "equal" ? "text-emerald-600" : "text-gray-400"
-                }`}
-              />
-              <div
-                className={`text-sm font-medium ${
-                  splitMethod === "equal" ? "text-emerald-900" : "text-gray-700"
-                }`}
+        <div style={sectionStyle}>
+          <div
+            style={{
+              fontSize: "13px",
+              fontWeight: 700,
+              color: "#f0eee8",
+              marginBottom: "12px",
+            }}
+          >
+            ⚖️ Split Method
+          </div>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: "8px",
+            }}
+          >
+            {(["equal", "manual"] as const).map((method) => (
+              <button
+                key={method}
+                onClick={() => setSplitMethod(method)}
+                disabled={isProcessing}
+                style={{
+                  padding: "12px",
+                  borderRadius: "12px",
+                  border:
+                    splitMethod === method
+                      ? "1px solid rgba(245,158,11,0.4)"
+                      : "1px solid rgba(255,255,255,0.07)",
+                  background:
+                    splitMethod === method
+                      ? "rgba(245,158,11,0.08)"
+                      : "rgba(255,255,255,0.03)",
+                  cursor: "pointer",
+                  transition: "all 0.2s",
+                }}
               >
-                Equal Split
-              </div>
-              <div className="text-xs text-gray-500 mt-1">Divide equally</div>
-            </button>
-            <button
-              onClick={() => setSplitMethod("manual")}
-              disabled={isProcessing}
-              className={`p-4 rounded-xl border-2 transition-all ${
-                splitMethod === "manual"
-                  ? "border-emerald-500 bg-emerald-50 shadow-md"
-                  : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
-              } disabled:opacity-50`}
-            >
-              <div
-                className={`text-2xl mx-auto mb-2 ${
-                  splitMethod === "manual"
-                    ? "text-emerald-600"
-                    : "text-gray-400"
-                }`}
-              >
-                ✏️
-              </div>
-              <div
-                className={`text-sm font-medium ${
-                  splitMethod === "manual"
-                    ? "text-emerald-900"
-                    : "text-gray-700"
-                }`}
-              >
-                Custom
-              </div>
-              <div className="text-xs text-gray-500 mt-1">Set amounts</div>
-            </button>
+                <div style={{ fontSize: "18px", marginBottom: "4px" }}>
+                  {method === "equal" ? "⚖️" : "✏️"}
+                </div>
+                <div
+                  style={{
+                    fontSize: "13px",
+                    fontWeight: 700,
+                    color: splitMethod === method ? "#f59e0b" : "#f0eee8",
+                  }}
+                >
+                  {method === "equal" ? "Equal" : "Custom"}
+                </div>
+                <div
+                  style={{
+                    fontSize: "11px",
+                    color: "#4a4a5a",
+                    marginTop: "2px",
+                  }}
+                >
+                  {method === "equal" ? "Split evenly" : "Set amounts"}
+                </div>
+              </button>
+            ))}
           </div>
         </div>
 
         {/* Participants */}
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-gray-900 font-semibold flex items-center gap-2">
-              <span className="text-emerald-600">👥</span> Participants (
-              {participants.length})
-            </h2>
-            <button
-              onClick={addParticipant}
-              disabled={isProcessing}
-              className="flex items-center gap-2 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 px-3 py-2 rounded-lg transition-colors disabled:opacity-50"
+        <div style={sectionStyle}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginBottom: "14px",
+            }}
+          >
+            <div
+              style={{ fontSize: "13px", fontWeight: 700, color: "#f0eee8" }}
             >
-              <Plus className="w-4 h-4" />
-              <span className="text-sm font-medium">Add Person</span>
+              👥 Participants ({participants.length})
+            </div>
+            <button
+              onClick={() =>
+                setParticipants([
+                  ...participants,
+                  {
+                    id: Date.now().toString(),
+                    name: "",
+                    phoneNumber: "",
+                    wallet: "",
+                    share: 0,
+                  },
+                ])
+              }
+              disabled={isProcessing}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+                background: "rgba(245,158,11,0.08)",
+                border: "1px solid rgba(245,158,11,0.2)",
+                borderRadius: "8px",
+                padding: "5px 10px",
+                color: "#f59e0b",
+                fontSize: "12px",
+                fontWeight: 700,
+                cursor: "pointer",
+              }}
+            >
+              <Plus size={12} /> Add
             </button>
           </div>
 
-          <div className="space-y-4">
-            {participants.map((participant, index) => (
+          <div
+            style={{ display: "flex", flexDirection: "column", gap: "12px" }}
+          >
+            {participants.map((p, index) => (
               <div
-                key={participant.id}
-                className="border-2 border-gray-200 rounded-xl p-4 hover:border-emerald-200 transition-colors"
+                key={p.id}
+                style={{
+                  background: "rgba(255,255,255,0.02)",
+                  border: "1px solid rgba(255,255,255,0.06)",
+                  borderRadius: "12px",
+                  padding: "12px",
+                }}
               >
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <div className="bg-gradient-to-br from-emerald-100 to-teal-100 w-8 h-8 rounded-full flex items-center justify-center">
-                      <span className="text-sm font-semibold text-emerald-700">
-                        {index + 1}
-                      </span>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    marginBottom: "10px",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: "26px",
+                        height: "26px",
+                        borderRadius: "50%",
+                        background: "rgba(245,158,11,0.15)",
+                        border: "1px solid rgba(245,158,11,0.3)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: "12px",
+                        fontWeight: 700,
+                        color: "#f59e0b",
+                      }}
+                    >
+                      {index + 1}
                     </div>
-                    <span className="text-gray-700 text-sm font-medium">
+                    <span
+                      style={{
+                        fontSize: "13px",
+                        fontWeight: 600,
+                        color: "#8b8a96",
+                      }}
+                    >
                       Person {index + 1}
                     </span>
                   </div>
                   {participants.length > 1 && (
                     <button
-                      onClick={() => removeParticipant(participant.id)}
+                      onClick={() =>
+                        setParticipants(
+                          participants.filter((pp) => pp.id !== p.id),
+                        )
+                      }
                       disabled={isProcessing}
-                      className="p-1.5 hover:bg-red-50 rounded-lg transition-colors group disabled:opacity-50"
+                      style={{
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        padding: "4px",
+                      }}
                     >
-                      <X className="w-4 h-4 text-gray-400 group-hover:text-red-500" />
+                      <X size={14} color="#4a4a5a" />
                     </button>
                   )}
                 </div>
 
-                <div className="space-y-3">
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "8px",
+                  }}
+                >
                   <div>
-                    <label className="block text-gray-600 text-xs font-medium mb-2">
-                      NAME *
-                    </label>
+                    <label style={labelStyle}>NAME *</label>
                     <input
+                      style={inputStyle}
                       type="text"
-                      value={participant.name}
+                      value={p.name}
                       onChange={(e) =>
-                        updateParticipant(
-                          participant.id,
-                          "name",
-                          e.target.value,
+                        setParticipants(
+                          participants.map((pp) =>
+                            pp.id === p.id
+                              ? { ...pp, name: e.target.value }
+                              : pp,
+                          ),
                         )
                       }
-                      placeholder="e.g. Alice or 0x1234..."
-                      className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none text-sm transition-all"
+                      placeholder="Alice or @farcaster"
                       disabled={isProcessing}
                     />
                   </div>
-
                   <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <Wallet className="w-3.5 h-3.5 text-gray-500" />
-                      <span className="text-gray-600 text-xs font-medium">
-                        WALLET ADDRESS *
-                      </span>
-                    </div>
+                    <label
+                      style={{
+                        ...labelStyle,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "4px",
+                      }}
+                    >
+                      <Wallet size={10} /> WALLET *
+                    </label>
                     <input
+                      style={{
+                        ...inputStyle,
+                        fontFamily: "'DM Mono', monospace",
+                        fontSize: "12px",
+                      }}
                       type="text"
-                      value={participant.wallet}
+                      value={p.wallet}
                       onChange={(e) =>
-                        updateParticipant(
-                          participant.id,
-                          "wallet",
-                          e.target.value,
+                        setParticipants(
+                          participants.map((pp) =>
+                            pp.id === p.id
+                              ? { ...pp, wallet: e.target.value }
+                              : pp,
+                          ),
                         )
                       }
                       placeholder="0x..."
-                      className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none text-sm font-mono transition-all"
                       disabled={isProcessing}
                     />
                   </div>
-
                   <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <Phone className="w-3.5 h-3.5 text-gray-500" />
-                      <span className="text-gray-600 text-xs font-medium">
-                        PHONE (OPTIONAL)
-                      </span>
-                    </div>
+                    <label
+                      style={{
+                        ...labelStyle,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "4px",
+                      }}
+                    >
+                      <Phone size={10} /> PHONE (optional)
+                    </label>
                     <input
+                      style={inputStyle}
                       type="tel"
-                      value={participant.phoneNumber}
+                      value={p.phoneNumber}
                       onChange={(e) =>
-                        updateParticipant(
-                          participant.id,
-                          "phoneNumber",
-                          e.target.value,
+                        setParticipants(
+                          participants.map((pp) =>
+                            pp.id === p.id
+                              ? { ...pp, phoneNumber: e.target.value }
+                              : pp,
+                          ),
                         )
                       }
                       placeholder="+1234567890"
-                      className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none text-sm transition-all"
                       disabled={isProcessing}
                     />
                   </div>
-
                   {splitMethod === "manual" && (
                     <div>
-                      <label className="block text-gray-600 text-xs font-medium mb-2">
-                        AMOUNT TO PAY *
-                      </label>
+                      <label style={labelStyle}>AMOUNT TO PAY *</label>
                       <input
+                        style={inputStyle}
                         type="number"
-                        value={participant.share || ""}
+                        value={p.share || ""}
                         onChange={(e) =>
-                          updateParticipant(
-                            participant.id,
-                            "share",
-                            parseFloat(e.target.value) || 0,
+                          setParticipants(
+                            participants.map((pp) =>
+                              pp.id === p.id
+                                ? {
+                                    ...pp,
+                                    share: parseFloat(e.target.value) || 0,
+                                  }
+                                : pp,
+                            ),
                           )
                         }
                         placeholder="0.00"
                         step="0.01"
                         min="0"
-                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none text-sm transition-all"
                         disabled={isProcessing}
                       />
                     </div>
                   )}
-
                   {splitMethod === "equal" && totalAmount && (
-                    <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 flex items-center justify-between">
-                      <span className="text-emerald-700 text-sm font-medium">
-                        Share amount:
+                    <div
+                      style={{
+                        background: "rgba(245,158,11,0.06)",
+                        border: "1px solid rgba(245,158,11,0.15)",
+                        borderRadius: "8px",
+                        padding: "8px 12px",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
+                      <span style={{ color: "#8b8a96", fontSize: "12px" }}>
+                        Share
                       </span>
-                      <span className="text-emerald-900 text-lg font-bold">
+                      <span
+                        style={{
+                          color: "#f59e0b",
+                          fontWeight: 700,
+                          fontFamily: "'DM Mono', monospace",
+                        }}
+                      >
                         {(
                           parseFloat(totalAmount) / participants.length
                         ).toFixed(2)}{" "}
@@ -597,70 +781,121 @@ export function CreateBill({
         </div>
 
         {/* Summary */}
-        {totalAmount && (
-          <div className="bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl p-6 text-white shadow-lg">
-            <h3 className="text-lg font-semibold mb-4">Bill Summary</h3>
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="opacity-90">Total Amount:</span>
-                <span className="font-bold text-xl">
-                  {parseFloat(totalAmount).toFixed(2)} {currency}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="opacity-90">Participants:</span>
-                <span className="font-semibold">
-                  {participants.length} people
-                </span>
-              </div>
-              {splitMethod === "equal" && (
-                <div className="flex justify-between pt-2 border-t border-white/20">
-                  <span className="opacity-90">Per Person:</span>
-                  <span className="font-bold">
-                    {(parseFloat(totalAmount) / participants.length).toFixed(2)}{" "}
-                    {currency}
-                  </span>
-                </div>
-              )}
+        {totalAmount && parseFloat(totalAmount) > 0 && (
+          <div
+            style={{
+              background:
+                "linear-gradient(135deg, rgba(245,158,11,0.1), rgba(217,119,6,0.05))",
+              border: "1px solid rgba(245,158,11,0.2)",
+              borderRadius: "14px",
+              padding: "16px",
+              marginBottom: "12px",
+            }}
+          >
+            <div
+              style={{
+                fontSize: "12px",
+                fontWeight: 700,
+                color: "#f59e0b",
+                marginBottom: "12px",
+                letterSpacing: "0.5px",
+              }}
+            >
+              BILL SUMMARY
             </div>
+            {[
+              {
+                label: "Total",
+                value: `${parseFloat(totalAmount).toFixed(2)} ${currency}`,
+              },
+              { label: "Participants", value: `${participants.length} people` },
+              ...(splitMethod === "equal"
+                ? [
+                    {
+                      label: "Per person",
+                      value: `${(parseFloat(totalAmount) / participants.length).toFixed(2)} ${currency}`,
+                    },
+                  ]
+                : []),
+            ].map((row) => (
+              <div
+                key={row.label}
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  marginBottom: "6px",
+                }}
+              >
+                <span style={{ color: "#8b8a96", fontSize: "13px" }}>
+                  {row.label}
+                </span>
+                <span
+                  style={{
+                    color: "#f0eee8",
+                    fontWeight: 700,
+                    fontSize: "13px",
+                    fontFamily: "'DM Mono', monospace",
+                  }}
+                >
+                  {row.value}
+                </span>
+              </div>
+            ))}
           </div>
         )}
-
-        {/* Create Button */}
-        <div className="sticky bottom-0 bg-white border-t border-gray-200 p-4 -mx-4 sm:-mx-6">
-          <button
-            onClick={handleCreate}
-            disabled={!canSubmit}
-            className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-semibold py-4 rounded-xl transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-          >
-            {isProcessing ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin" /> Creating Bill...
-              </>
-            ) : (
-              <>
-                <CheckCircle className="w-5 h-5" /> Create Bill
-              </>
-            )}
-          </button>
-        </div>
       </div>
 
-      <style jsx>{`
-        @keyframes scale-in {
-          from {
-            transform: scale(0.9);
-            opacity: 0;
-          }
-          to {
-            transform: scale(1);
-            opacity: 1;
-          }
-        }
-        .animate-scale-in {
-          animation: scale-in 0.2s ease-out;
-        }
-      `}</style>
-    </>
+      {/* Sticky submit */}
+      <div
+        style={{
+          position: "fixed",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          padding: "12px 20px 24px",
+          background: "linear-gradient(0deg, #0e0e12 60%, transparent)",
+          zIndex: 10,
+        }}
+      >
+        <button
+          onClick={handleCreate}
+          disabled={!canSubmit}
+          style={{
+            width: "100%",
+            padding: "14px",
+            background: canSubmit
+              ? "linear-gradient(135deg, #f59e0b, #d97706)"
+              : "rgba(255,255,255,0.06)",
+            border: "none",
+            borderRadius: "14px",
+            color: canSubmit ? "#0e0e12" : "#4a4a5a",
+            fontWeight: 700,
+            fontSize: "15px",
+            fontFamily: "var(--font-syne), 'Syne', sans-serif",
+            cursor: canSubmit ? "pointer" : "not-allowed",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "8px",
+            transition: "all 0.2s",
+            boxShadow: canSubmit ? "0 4px 24px rgba(245,158,11,0.3)" : "none",
+          }}
+        >
+          {isProcessing ? (
+            <>
+              <Loader2
+                size={18}
+                style={{ animation: "spin 1s linear infinite" }}
+              />{" "}
+              Creating…
+            </>
+          ) : (
+            <>
+              <CheckCircle size={18} /> Create Bill
+            </>
+          )}
+        </button>
+      </div>
+    </div>
   );
 }

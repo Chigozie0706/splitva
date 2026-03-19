@@ -6,6 +6,7 @@ import { CreateBill } from "@/components/create-bill";
 import { VoiceSplitAgent } from "@/components/VoiceSplitAgent";
 import { useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
+import { ArrowLeft } from "lucide-react";
 
 interface ParsedBill {
   title: string;
@@ -20,41 +21,29 @@ interface ParsedBill {
   confirmation: string;
 }
 
-export default function CreateEvent() {
+export default function CreateBillPage() {
   const router = useRouter();
   const { address: userAddress } = useAccount();
   const [formKey, setFormKey] = useState(0);
   const [voiceDefaults, setVoiceDefaults] = useState<ParsedBill | null>(null);
+  const [showForm, setShowForm] = useState(false);
 
-  function handleBack(): void {
-    router.push("/");
-  }
-
-  function handleCreateBill(_bill: Omit<Bill, "id" | "createdAt">): void {
-    router.push("/");
-  }
-
-  // PRIMARY: agent created bill on-chain — redirect home after short delay
   function handleBillCreated(_bill: ParsedBill, txHash: string) {
-    console.log("Bill created on-chain, tx:", txHash);
     setTimeout(() => router.push("/"), 2000);
   }
 
-  // FALLBACK: user wants to review before submitting — fills the form below
   function handleBillParsed(parsed: ParsedBill) {
     setVoiceDefaults(parsed);
     setFormKey((k) => k + 1);
+    setShowForm(true);
   }
 
   const defaultParticipants = voiceDefaults?.participants.map((p, i) => {
     let name = "";
-    if (p.address === userAddress) {
-      name = "You";
-    } else if (p.resolvedFrom) {
-      name = p.resolvedFrom;
-    } else if (p.address !== "0xPENDING" && p.address.startsWith("0x")) {
+    if (p.address === userAddress) name = "You";
+    else if (p.resolvedFrom) name = p.resolvedFrom;
+    else if (p.address !== "0xPENDING" && p.address.startsWith("0x"))
       name = `${p.address.slice(0, 6)}...${p.address.slice(-4)}`;
-    }
     return {
       id: `voice-${formKey}-${i}`,
       name,
@@ -65,19 +54,103 @@ export default function CreateEvent() {
   });
 
   return (
-    <div className="min-h-screen bg-gray-50 overflow-y-auto">
-      <VoiceSplitAgent
-        onBillCreated={handleBillCreated}
-        onBillParsed={handleBillParsed}
-      />
-      <CreateBill
-        key={formKey}
-        onBack={handleBack}
-        onCreate={handleCreateBill}
-        defaultTitle={voiceDefaults?.title}
-        defaultAmount={voiceDefaults?.totalAmount?.toString()}
-        defaultParticipants={defaultParticipants}
-      />
+    <div
+      style={{
+        minHeight: "100dvh",
+        background: "#0e0e12",
+        fontFamily: "'Syne', sans-serif",
+      }}
+    >
+      <div
+        style={{
+          padding: "16px 20px",
+          borderBottom: "1px solid rgba(255,255,255,0.06)",
+          display: "flex",
+          alignItems: "center",
+          gap: "12px",
+          background: "#16161d",
+        }}
+      >
+        <button
+          onClick={() => router.push("/")}
+          style={{
+            background: "rgba(255,255,255,0.06)",
+            border: "1px solid rgba(255,255,255,0.08)",
+            borderRadius: "10px",
+            padding: "8px",
+            cursor: "pointer",
+            display: "flex",
+          }}
+        >
+          <ArrowLeft size={18} color="#f0eee8" />
+        </button>
+        <div>
+          <div style={{ fontSize: "16px", fontWeight: 700, color: "#f0eee8" }}>
+            New Bill
+          </div>
+          <div style={{ fontSize: "11px", color: "#8b8a96" }}>
+            Voice or manual entry
+          </div>
+        </div>
+      </div>
+
+      <div
+        style={{
+          display: "flex",
+          gap: "0",
+          margin: "16px 20px 0",
+          background: "rgba(255,255,255,0.04)",
+          borderRadius: "12px",
+          padding: "4px",
+          border: "1px solid rgba(255,255,255,0.07)",
+        }}
+      >
+        {[
+          { label: "🎙️ Voice Agent", key: false },
+          { label: "✏️ Manual", key: true },
+        ].map((tab) => (
+          <button
+            key={String(tab.key)}
+            onClick={() => setShowForm(tab.key)}
+            style={{
+              flex: 1,
+              padding: "8px 12px",
+              borderRadius: "9px",
+              border: "none",
+              cursor: "pointer",
+              background:
+                showForm === tab.key ? "rgba(245,158,11,0.15)" : "transparent",
+              color: showForm === tab.key ? "#f59e0b" : "#8b8a96",
+              fontWeight: showForm === tab.key ? 700 : 500,
+              fontSize: "13px",
+              fontFamily: "'Syne', sans-serif",
+              transition: "all 0.2s",
+            }}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {!showForm && (
+        <div style={{ padding: "16px 0 0" }}>
+          <VoiceSplitAgent
+            onBillCreated={handleBillCreated}
+            onBillParsed={handleBillParsed}
+          />
+        </div>
+      )}
+
+      {showForm && (
+        <CreateBill
+          key={formKey}
+          onBack={() => setShowForm(false)}
+          onCreate={() => router.push("/")}
+          defaultTitle={voiceDefaults?.title}
+          defaultAmount={voiceDefaults?.totalAmount?.toString()}
+          defaultParticipants={defaultParticipants}
+        />
+      )}
     </div>
   );
 }

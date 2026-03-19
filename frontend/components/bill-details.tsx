@@ -1,9 +1,16 @@
 "use client";
 
-import { ArrowLeft, Download, Share2, CheckCircle } from "lucide-react";
+import {
+  ArrowLeft,
+  Download,
+  Share2,
+  CheckCircle,
+  Clock,
+  AlertCircle,
+  ArrowUp,
+} from "lucide-react";
 import { useAccount } from "wagmi";
-import { Bill } from "./homepage";
-import { ParticipantCard } from "./participant-card";
+import { Bill, Participant, Currency } from "./homepage";
 
 interface BillDetailsProps {
   bill: Bill;
@@ -12,6 +19,238 @@ interface BillDetailsProps {
   onWithdraw: (billId: string) => void;
 }
 
+// ── Participant card inlined — no separate import needed ──────────────────────
+function ParticipantRow({
+  participant,
+  currency,
+  billStatus,
+  currentAddress,
+  onPay,
+}: {
+  participant: Participant;
+  currency: Currency;
+  billStatus: "active" | "completed";
+  currentAddress?: string;
+  onPay: () => void;
+}) {
+  const isMe =
+    !!currentAddress &&
+    participant.id.toLowerCase() === currentAddress.toLowerCase();
+  const remaining = participant.share - participant.amountPaid;
+
+  const statusCfg = {
+    paid: {
+      color: "#10b981",
+      bg: "rgba(16,185,129,0.08)",
+      border: "rgba(16,185,129,0.2)",
+      icon: <CheckCircle size={11} />,
+      label: "Paid",
+    },
+    pending: {
+      color: "#f59e0b",
+      bg: "rgba(245,158,11,0.08)",
+      border: "rgba(245,158,11,0.2)",
+      icon: <Clock size={11} />,
+      label: "Pending",
+    },
+    underpaid: {
+      color: "#f97316",
+      bg: "rgba(249,115,22,0.08)",
+      border: "rgba(249,115,22,0.2)",
+      icon: <AlertCircle size={11} />,
+      label: "Partial",
+    },
+    overpaid: {
+      color: "#3b82f6",
+      bg: "rgba(59,130,246,0.08)",
+      border: "rgba(59,130,246,0.2)",
+      icon: <ArrowUp size={11} />,
+      label: "Overpaid",
+    },
+  }[participant.status];
+
+  return (
+    <div
+      style={{
+        background: isMe ? "rgba(245,158,11,0.05)" : "rgba(255,255,255,0.03)",
+        border: isMe
+          ? "1px solid rgba(245,158,11,0.2)"
+          : "1px solid rgba(255,255,255,0.07)",
+        borderRadius: "14px",
+        padding: "14px",
+        position: "relative",
+        overflow: "hidden",
+      }}
+    >
+      {isMe && (
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            height: "2px",
+            background:
+              "linear-gradient(90deg, transparent, #f59e0b, transparent)",
+          }}
+        />
+      )}
+
+      <div
+        style={{
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          marginBottom: "10px",
+        }}
+      >
+        <div>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              marginBottom: "3px",
+            }}
+          >
+            <span
+              style={{
+                color: "#f0eee8",
+                fontWeight: 600,
+                fontSize: "14px",
+                fontFamily: "var(--font-syne), sans-serif",
+              }}
+            >
+              {participant.name}
+            </span>
+            {isMe && (
+              <span
+                style={{
+                  background: "rgba(245,158,11,0.15)",
+                  color: "#f59e0b",
+                  fontSize: "10px",
+                  fontWeight: 700,
+                  padding: "1px 6px",
+                  borderRadius: "6px",
+                  letterSpacing: "0.5px",
+                }}
+              >
+                YOU
+              </span>
+            )}
+          </div>
+          <div
+            style={{
+              color: "#4a4a5a",
+              fontSize: "11px",
+              fontFamily: "var(--font-dm-mono), 'DM Mono', monospace",
+            }}
+          >
+            {participant.id.slice(0, 8)}...{participant.id.slice(-6)}
+          </div>
+        </div>
+        <span
+          style={{
+            background: statusCfg.bg,
+            color: statusCfg.color,
+            border: `1px solid ${statusCfg.border}`,
+            fontSize: "11px",
+            fontWeight: 600,
+            padding: "3px 8px",
+            borderRadius: "20px",
+            display: "flex",
+            alignItems: "center",
+            gap: "4px",
+          }}
+        >
+          {statusCfg.icon} {statusCfg.label}
+        </span>
+      </div>
+
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <div style={{ display: "flex", gap: "20px" }}>
+          <div>
+            <div
+              style={{
+                color: "#4a4a5a",
+                fontSize: "10px",
+                letterSpacing: "0.5px",
+                marginBottom: "2px",
+              }}
+            >
+              SHARE
+            </div>
+            <div
+              style={{
+                color: "#f0eee8",
+                fontWeight: 600,
+                fontSize: "14px",
+                fontFamily: "var(--font-dm-mono), 'DM Mono', monospace",
+              }}
+            >
+              {participant.share.toFixed(2)}{" "}
+              <span style={{ color: "#8b8a96", fontSize: "11px" }}>
+                {currency}
+              </span>
+            </div>
+          </div>
+          {participant.amountPaid > 0 && (
+            <div>
+              <div
+                style={{
+                  color: "#4a4a5a",
+                  fontSize: "10px",
+                  letterSpacing: "0.5px",
+                  marginBottom: "2px",
+                }}
+              >
+                PAID
+              </div>
+              <div
+                style={{
+                  color: "#10b981",
+                  fontWeight: 600,
+                  fontSize: "14px",
+                  fontFamily: "var(--font-dm-mono), 'DM Mono', monospace",
+                }}
+              >
+                {participant.amountPaid.toFixed(2)}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {isMe && billStatus === "active" && participant.status !== "paid" && (
+          <button
+            onClick={onPay}
+            style={{
+              background: "linear-gradient(135deg, #f59e0b, #d97706)",
+              border: "none",
+              borderRadius: "10px",
+              color: "#0e0e12",
+              fontWeight: 700,
+              fontSize: "13px",
+              fontFamily: "var(--font-syne), sans-serif",
+              padding: "8px 16px",
+              cursor: "pointer",
+              boxShadow: "0 2px 12px rgba(245,158,11,0.3)",
+            }}
+          >
+            Pay {remaining.toFixed(2)}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Main BillDetails component ────────────────────────────────────────────────
 export function BillDetails({
   bill,
   onBack,
@@ -20,138 +259,273 @@ export function BillDetails({
 }: BillDetailsProps) {
   const { address } = useAccount();
   const isOrganizer = bill.organizerId.toLowerCase() === address?.toLowerCase();
-
   const totalCollected = bill.participants.reduce(
     (sum, p) => sum + p.amountPaid,
     0,
   );
   const paidCount = bill.participants.filter((p) => p.status === "paid").length;
-  const allPaid = paidCount === bill.participants.length;
-  const progress = (totalCollected / bill.totalAmount) * 100;
+  const progress = Math.min((totalCollected / bill.totalAmount) * 100, 100);
 
   const handleShare = () => {
     const url = window.location.href;
-    if (navigator.share) {
-      navigator.share({ title: bill.title, url });
-    } else {
+    if (navigator.share) navigator.share({ title: bill.title, url });
+    else {
       navigator.clipboard.writeText(url);
-      alert("Link copied to clipboard!");
-    }
-  };
-
-  const handleWithdraw = () => {
-    if (
-      window.confirm(
-        `Withdraw ${totalCollected.toFixed(2)} ${
-          bill.currency
-        } to your wallet?`,
-      )
-    ) {
-      onWithdraw(bill.id);
     }
   };
 
   return (
-    <div className="min-h-screen pb-20">
+    <div
+      style={{
+        minHeight: "100dvh",
+        background: "#0e0e12",
+        fontFamily: "var(--font-syne), 'Syne', sans-serif",
+        paddingBottom: "40px",
+      }}
+    >
       {/* Header */}
-      <div className="bg-gradient-to-r from-emerald-500 to-teal-500 px-4 sm:px-6 pt-6 pb-32 sm:pb-36">
-        <div className="max-w-2xl mx-auto">
+      <div
+        style={{
+          background: "linear-gradient(180deg, #16161d 0%, #0e0e12 100%)",
+          padding: "20px 20px 24px",
+          borderBottom: "1px solid rgba(255,255,255,0.06)",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: "16px",
+          }}
+        >
           <button
             onClick={onBack}
-            className="p-2 hover:bg-white/20 rounded-full transition-colors -ml-2 mb-4"
+            style={{
+              background: "rgba(255,255,255,0.06)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              borderRadius: "10px",
+              padding: "8px",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
           >
-            <ArrowLeft className="w-5 h-5 text-white" />
+            <ArrowLeft size={18} color="#f0eee8" />
           </button>
-
-          <div className="mb-6">
-            <h1 className="text-white text-2xl mb-2">{bill.title}</h1>
-            <div className="flex items-center gap-2">
-              <span className="text-emerald-50 text-sm">
-                {isOrganizer ? "Organized by you" : `By ${bill.organizerName}`}
-              </span>
-              {bill.status === "completed" && (
-                <div className="flex items-center gap-1 bg-white/20 backdrop-blur-sm px-2 py-0.5 rounded-full">
-                  <CheckCircle className="w-3 h-3 text-white" />
-                  <span className="text-white text-xs">Completed</span>
-                </div>
-              )}
-            </div>
-          </div>
-
           <button
             onClick={handleShare}
-            className="flex items-center gap-2 bg-white/20 backdrop-blur-sm text-white px-4 py-2 rounded-full hover:bg-white/30 transition-colors"
+            style={{
+              background: "rgba(255,255,255,0.06)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              borderRadius: "10px",
+              padding: "8px 14px",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              color: "#8b8a96",
+              fontSize: "13px",
+              fontWeight: 600,
+            }}
           >
-            <Share2 className="w-4 h-4" />
-            <span className="text-sm">Share Bill</span>
+            <Share2 size={14} /> Share
           </button>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+            marginBottom: "4px",
+          }}
+        >
+          <h1
+            style={{
+              fontSize: "22px",
+              fontWeight: 800,
+              color: "#f0eee8",
+              letterSpacing: "-0.3px",
+              margin: 0,
+            }}
+          >
+            {bill.title}
+          </h1>
+          {bill.status === "completed" && (
+            <span
+              style={{
+                background: "rgba(16,185,129,0.1)",
+                color: "#10b981",
+                border: "1px solid rgba(16,185,129,0.2)",
+                fontSize: "11px",
+                fontWeight: 700,
+                padding: "3px 8px",
+                borderRadius: "20px",
+                whiteSpace: "nowrap",
+              }}
+            >
+              Completed
+            </span>
+          )}
+        </div>
+        <div style={{ color: "#8b8a96", fontSize: "12px" }}>
+          {isOrganizer ? "Organized by you" : `By ${bill.organizerName}`}
         </div>
       </div>
 
-      {/* Content */}
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 -mt-24 sm:-mt-28">
-        {/* Amount Card */}
-        <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
-          <div className="text-center mb-6">
-            <div className="text-gray-500 text-sm mb-1">Total Amount</div>
-            <div className="text-gray-900 text-3xl sm:text-4xl mb-1">
-              {bill.totalAmount.toLocaleString()}{" "}
-              <span className="text-2xl sm:text-3xl">{bill.currency}</span>
+      <div style={{ padding: "16px 20px" }}>
+        {/* Amount card */}
+        <div
+          style={{
+            background: "rgba(255,255,255,0.03)",
+            border: "1px solid rgba(255,255,255,0.07)",
+            borderRadius: "16px",
+            padding: "20px",
+            marginBottom: "16px",
+          }}
+        >
+          <div style={{ textAlign: "center", marginBottom: "20px" }}>
+            <div
+              style={{
+                color: "#4a4a5a",
+                fontSize: "11px",
+                letterSpacing: "1px",
+                marginBottom: "6px",
+              }}
+            >
+              TOTAL AMOUNT
             </div>
-            <div className="text-emerald-600">
-              {totalCollected.toLocaleString()} {bill.currency} collected
+            <div
+              style={{
+                fontSize: "36px",
+                fontWeight: 800,
+                color: "#f0eee8",
+                fontFamily: "var(--font-dm-mono), 'DM Mono', monospace",
+                letterSpacing: "-1px",
+                lineHeight: 1,
+              }}
+            >
+              {bill.totalAmount.toFixed(2)}
+              <span
+                style={{
+                  color: "#f59e0b",
+                  fontSize: "18px",
+                  marginLeft: "6px",
+                }}
+              >
+                {bill.currency}
+              </span>
+            </div>
+            <div
+              style={{ color: "#10b981", fontSize: "13px", marginTop: "6px" }}
+            >
+              {totalCollected.toFixed(2)} {bill.currency} collected
             </div>
           </div>
 
           {bill.status === "active" && (
             <>
-              <div className="w-full bg-gray-100 h-3 rounded-full overflow-hidden mb-2">
+              <div
+                style={{
+                  height: "6px",
+                  background: "rgba(255,255,255,0.06)",
+                  borderRadius: "3px",
+                  overflow: "hidden",
+                  marginBottom: "8px",
+                }}
+              >
                 <div
-                  className="bg-gradient-to-r from-emerald-500 to-teal-500 h-full transition-all duration-300"
-                  style={{ width: `${Math.min(progress, 100)}%` }}
+                  style={{
+                    width: `${progress}%`,
+                    height: "100%",
+                    background: "linear-gradient(90deg, #10b981, #059669)",
+                    borderRadius: "3px",
+                    transition: "width 0.8s ease",
+                  }}
                 />
               </div>
-              <div className="text-center text-gray-500 text-sm">
-                {paidCount} of {bill.participants.length} paid
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span style={{ color: "#8b8a96", fontSize: "12px" }}>
+                  {paidCount} of {bill.participants.length} paid
+                </span>
+                <span style={{ color: "#8b8a96", fontSize: "12px" }}>
+                  {progress.toFixed(0)}%
+                </span>
               </div>
             </>
           )}
 
-          {/* Withdraw Button — organizer only, bill must be completed */}
-          {isOrganizer &&
-            bill.status === "completed" &&
-            !bill.participants.every((p) => p.amountPaid === 0) && (
-              <button
-                onClick={handleWithdraw}
-                className="w-full mt-6 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white transition-colors flex items-center justify-center gap-2"
-              >
-                <Download className="w-5 h-5" />
-                <span>Withdraw to Wallet</span>
-              </button>
-            )}
+          {isOrganizer && bill.status === "completed" && totalCollected > 0 && (
+            <button
+              onClick={() =>
+                window.confirm(
+                  `Withdraw ${totalCollected.toFixed(2)} ${bill.currency}?`,
+                ) && onWithdraw(bill.id)
+              }
+              style={{
+                width: "100%",
+                marginTop: "16px",
+                padding: "12px",
+                background: "linear-gradient(135deg, #10b981, #059669)",
+                border: "none",
+                borderRadius: "12px",
+                color: "#fff",
+                fontWeight: 700,
+                fontSize: "14px",
+                fontFamily: "var(--font-syne), sans-serif",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "8px",
+              }}
+            >
+              <Download size={16} /> Withdraw {totalCollected.toFixed(2)}{" "}
+              {bill.currency}
+            </button>
+          )}
 
-          {/* Waiting message — organizer, bill still active */}
           {isOrganizer && bill.status === "active" && (
-            <div className="mt-6 py-3 px-4 rounded-xl bg-gray-100 text-gray-500 text-sm text-center">
-              Waiting for all participants to pay before withdrawal
+            <div
+              style={{
+                marginTop: "14px",
+                padding: "10px 14px",
+                background: "rgba(255,255,255,0.03)",
+                borderRadius: "10px",
+                color: "#4a4a5a",
+                fontSize: "12px",
+                textAlign: "center",
+              }}
+            >
+              Waiting for all participants to pay
             </div>
           )}
         </div>
 
         {/* Participants */}
-        <div className="mb-6">
-          <h2 className="text-gray-900 font-semibold mb-4">
-            Participants ({bill.participants.length})
-          </h2>
-          <div className="space-y-3">
-            {bill.participants.map((participant) => (
-              <ParticipantCard
-                key={participant.id}
-                participant={participant}
+        <div>
+          <div
+            style={{
+              fontSize: "11px",
+              fontWeight: 700,
+              color: "#4a4a5a",
+              letterSpacing: "1.5px",
+              marginBottom: "12px",
+            }}
+          >
+            PARTICIPANTS ({bill.participants.length})
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            {bill.participants.map((p) => (
+              <ParticipantRow
+                key={p.id}
+                participant={p}
                 currency={bill.currency}
                 billStatus={bill.status}
                 currentAddress={address}
-                onPay={() => onPayShare(bill.id, participant.id)}
+                onPay={() => onPayShare(bill.id, p.id)}
               />
             ))}
           </div>
