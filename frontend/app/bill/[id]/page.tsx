@@ -13,6 +13,7 @@ import { BillDetails } from "@/components/bill-details";
 import type { Bill } from "@/components/homepage";
 import contractABI from "../../../contract/abi.json";
 import { Loader2 } from "lucide-react";
+import { VoiceSettleButton } from "@/components/VoiceSettleButton";
 
 const SPLITPAY_ADDRESS =
   "0xE47aa208f9B59b5857E6c54a5198a9a40F4c90C7" as `0x${string}`;
@@ -318,6 +319,30 @@ export default function BillPage() {
         onPayShare={handlePayShare}
         onWithdraw={handleWithdraw}
       />
+
+      {/* Voice settle — only show if current user is a participant who hasn't paid */}
+      {(() => {
+        const myParticipant = participants.find(
+          (p) => p.id.toLowerCase() === address?.toLowerCase(),
+        );
+        const remaining = myParticipant
+          ? myParticipant.share - myParticipant.amountPaid
+          : 0;
+        if (!myParticipant || remaining <= 0 || bill.status === "completed")
+          return null;
+        return (
+          <VoiceSettleButton
+            billId={billId}
+            amountOwed={remaining}
+            stablecoinAddress={billData.stablecoin}
+            currency={bill.currency}
+            onSuccess={() => {
+              refetchBill();
+              refetchStatus();
+            }}
+          />
+        );
+      })()}
     </>
   );
 }
