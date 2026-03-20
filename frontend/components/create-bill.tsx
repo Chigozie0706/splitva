@@ -81,6 +81,7 @@ export function CreateBill({
 }: CreateBillProps) {
   const [title, setTitle] = useState(defaultTitle || "");
   const [totalAmount, setTotalAmount] = useState(defaultAmount || "");
+
   const [participants, setParticipants] = useState<ParticipantInput[]>(
     defaultParticipants || [
       { id: "1", name: "", phoneNumber: "", wallet: "", share: 0 },
