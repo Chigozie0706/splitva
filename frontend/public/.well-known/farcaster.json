@@ -1,0 +1,16 @@
+{
+    "accountAssociation": {
+        "header": "",
+        "payload": "",
+        "signature": ""
+    },
+    "frame": {
+        "version": "1",
+        "name": "Splitva",
+        "iconUrl": "https://splitva.vercel.app/images/splash.png",
+        "splashImageUrl": "https://splitva.vercel.app/images/splash.png",
+        "splashBackgroundColor": "#0e0e12",
+        "homeUrl": "https://splitva.vercel.app",
+        "webhookUrl": "https://splitva.vercel.app/api/webhook"
+    }
+}
