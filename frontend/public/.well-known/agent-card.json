@@ -1,0 +1,14 @@
+{
+    "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
+    "name": "Splitva",
+    "description": "Splitva is a voice-powered group expense splitting agent built on Celo. It listens to natural language expense descriptions, intelligently parses and splits bills between participants, resolves Farcaster usernames to wallet addresses automatically, and executes on-chain bill creation and stablecoin settlement — all with minimal user input.\n\nCapabilities:\n\n.  Voice understanding — transcribes natural speech via ElevenLabs Scribe and parses expense details (title, amount, participants, split type) using Google Gemini AI\n\n. Identity resolution — automatically converts Farcaster @usernames to Ethereum wallet addresses via the Farcaster Hub, no manual address entry needed\n\n. Agentic bill creation — executes createBill() on a Celo smart contract directly after voice confirmation, no form filling required\n\n. Voice settlement — participants say \"pay my share\" and the agent autonomously executes the two-step ERC20 approve and payShare transaction\n\n. Multi-currency support — handles cUSDm, cKES, cREAL, and cEUR Mento stablecoins\n\n. Dual-path design — every action has an AI-powered voice path for speed and a manual path for full control\n\nUse cases:\n\n. Splitting a restaurant bill among friends on Farcaster\n. Settling shared Uber, grocery, or travel expenses on Celo\n. Group trip expense tracking and settlement in local stablecoins\n. Any recurring group payment where participants need a fast, frictionless way to split and settle on-chain",
+    "image": "https://splitva.vercel.app/images/splash.png",
+    "services": [
+        {
+            "name": "web",
+            "endpoint": "https://splitva.vercel.app/"
+        }
+    ],
+    "x402Support": false,
+    "active": true
+}
