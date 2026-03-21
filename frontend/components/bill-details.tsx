@@ -194,7 +194,11 @@ function ParticipantRow({
                 fontFamily: "var(--font-dm-mono), 'DM Mono', monospace",
               }}
             >
-              {participant.share.toFixed(2)}{" "}
+              {/* {participant.share.toFixed(2)}{" "} */}
+              {participant.share < 0.01
+                ? participant.share.toFixed(4)
+                : participant.share.toFixed(2)}
+
               <span style={{ color: "#8b8a96", fontSize: "11px" }}>
                 {currency}
               </span>
@@ -220,7 +224,10 @@ function ParticipantRow({
                   fontFamily: "var(--font-dm-mono), 'DM Mono', monospace",
                 }}
               >
-                {participant.amountPaid.toFixed(2)}
+                {/* {participant.amountPaid.toFixed(2)} */}
+                {participant.amountPaid < 0.01
+                  ? participant.amountPaid.toFixed(4)
+                  : participant.amountPaid.toFixed(2)}
               </div>
             </div>
           )}
@@ -242,7 +249,8 @@ function ParticipantRow({
               boxShadow: "0 2px 12px rgba(245,158,11,0.3)",
             }}
           >
-            Pay {remaining.toFixed(2)}
+            {/* Pay {remaining.toFixed(2)} */}
+            Pay {remaining < 0.01 ? remaining.toFixed(4) : remaining.toFixed(2)}
           </button>
         )}
       </div>
@@ -407,7 +415,11 @@ export function BillDetails({
                 lineHeight: 1,
               }}
             >
-              {bill.totalAmount.toFixed(2)}
+              {/* {bill.totalAmount.toFixed(2)} */}
+              {bill.totalAmount < 0.01
+                ? bill.totalAmount.toFixed(4)
+                : bill.totalAmount.toFixed(2)}
+
               <span
                 style={{
                   color: "#f59e0b",
@@ -421,7 +433,11 @@ export function BillDetails({
             <div
               style={{ color: "#10b981", fontSize: "13px", marginTop: "6px" }}
             >
-              {totalCollected.toFixed(2)} {bill.currency} collected
+              {/* {totalCollected.toFixed(2)} {bill.currency} collected */}
+              {totalCollected < 0.01
+                ? totalCollected.toFixed(4)
+                : totalCollected.toFixed(2)}{" "}
+              {bill.currency} collected
             </div>
           </div>
 
@@ -461,7 +477,8 @@ export function BillDetails({
             <button
               onClick={() =>
                 window.confirm(
-                  `Withdraw ${totalCollected.toFixed(2)} ${bill.currency}?`,
+                  // `Withdraw ${totalCollected.toFixed(2)} ${bill.currency}?`
+                  `Withdraw ${totalCollected < 0.01 ? totalCollected.toFixed(4) : totalCollected.toFixed(2)} ${bill.currency}?`,
                 ) && onWithdraw(bill.id)
               }
               style={{
@@ -482,7 +499,12 @@ export function BillDetails({
                 gap: "8px",
               }}
             >
-              <Download size={16} /> Withdraw {totalCollected.toFixed(2)}{" "}
+              <Download size={16} />
+              {/* Withdraw {totalCollected.toFixed(2)}{" "} */}
+              Withdraw{" "}
+              {totalCollected < 0.01
+                ? totalCollected.toFixed(4)
+                : totalCollected.toFixed(2)}{" "}
               {bill.currency}
             </button>
           )}

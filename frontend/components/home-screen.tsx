@@ -145,7 +145,12 @@ function BillCard({
                 fontFamily: "'DM Mono', monospace",
               }}
             >
-              {bill.totalAmount.toFixed(2)}
+              {/* {bill.totalAmount.toFixed(2)} */}
+
+              {bill.totalAmount < 0.01
+                ? bill.totalAmount.toFixed(4)
+                : bill.totalAmount.toFixed(2)}
+
               <span
                 style={{
                   color: "#f59e0b",
@@ -185,7 +190,12 @@ function BillCard({
                   fontFamily: "'DM Mono', monospace",
                 }}
               >
-                {(myParticipant.share - myParticipant.amountPaid).toFixed(2)}
+                {/* {(myParticipant.share - myParticipant.amountPaid).toFixed(2)} */}
+
+                {(() => {
+                  const owe = myParticipant.share - myParticipant.amountPaid;
+                  return owe < 0.01 ? owe.toFixed(4) : owe.toFixed(2);
+                })()}
               </div>
             </div>
           )}
@@ -213,7 +223,11 @@ function BillCard({
             <div
               style={{ color: "#4a4a5a", fontSize: "11px", marginTop: "4px" }}
             >
-              {totalCollected.toFixed(2)} {bill.currency} collected
+              {/* {totalCollected.toFixed(2)} {bill.currency} collected */}
+              {totalCollected < 0.01
+                ? totalCollected.toFixed(4)
+                : totalCollected.toFixed(2)}{" "}
+              {bill.currency} collected
             </div>
           </div>
         )}
