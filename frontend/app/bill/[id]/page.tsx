@@ -15,8 +15,8 @@ import contractABI from "../../../contract/abi.json";
 import { Loader2 } from "lucide-react";
 import { VoiceSettleButton } from "@/components/VoiceSettleButton";
 
-const SPLITPAY_ADDRESS =
-  "0xE47aa208f9B59b5857E6c54a5198a9a40F4c90C7" as `0x${string}`;
+const CONTRACT_ADDRESS =
+  "0x95c7208144D097fdD83f4cF78CF780FF5674D5F3" as `0x${string}`;
 
 // FIX: all lowercase so stablecoin.toLowerCase() always matches
 const STABLECOIN: Record<string, Bill["currency"]> = {
@@ -59,7 +59,6 @@ type ContractBillStatus = [
   amountsPaid: readonly bigint[],
   paymentStatus: readonly boolean[],
   names: readonly string[],
-  phoneNumbers: readonly string[],
 ];
 
 export default function BillPage() {
@@ -79,14 +78,14 @@ export default function BillPage() {
   const billId = BigInt((params.id as string) ?? "0");
 
   const { data: rawBill, refetch: refetchBill } = useReadContract({
-    address: SPLITPAY_ADDRESS,
+    address: CONTRACT_ADDRESS,
     abi: contractABI.abi,
     functionName: "getBill",
     args: [billId],
     query: { enabled: mounted && billId > BigInt(0) },
   });
   const { data: rawStatus, refetch: refetchStatus } = useReadContract({
-    address: SPLITPAY_ADDRESS,
+    address: CONTRACT_ADDRESS,
     abi: contractABI.abi,
     functionName: "getBillStatus",
     args: [billId],
@@ -119,7 +118,7 @@ export default function BillPage() {
       if (remaining <= 0) return;
       setStep("paying");
       writeContract({
-        address: SPLITPAY_ADDRESS,
+        address: CONTRACT_ADDRESS,
         abi: contractABI.abi,
         functionName: "payShare",
         args: [billId, parseUnits(remaining.toFixed(18), 18)],
@@ -159,7 +158,7 @@ export default function BillPage() {
   }
 
   const billData = rawBill as unknown as ContractBill;
-  const [addrs, amountsOwed, amountsPaid, , names, phoneNumbers] =
+  const [addrs, amountsOwed, amountsPaid, , names] =
     rawStatus as unknown as ContractBillStatus;
 
   const participants = addrs.map((addr, i) => {
@@ -168,7 +167,6 @@ export default function BillPage() {
     return {
       id: addr,
       name: names[i] || `${addr.slice(0, 6)}...`,
-      phoneNumber: phoneNumbers[i],
       share,
       amountPaid: paid,
       status:
@@ -203,7 +201,7 @@ export default function BillPage() {
       address: billData.stablecoin,
       abi: ERC20_ABI,
       functionName: "approve",
-      args: [SPLITPAY_ADDRESS, parseUnits(remaining.toFixed(18), 18)],
+      args: [CONTRACT_ADDRESS, parseUnits(remaining.toFixed(18), 18)],
     });
   };
 
@@ -211,7 +209,7 @@ export default function BillPage() {
     setError("");
     setStep("withdrawing");
     writeContract({
-      address: SPLITPAY_ADDRESS,
+      address: CONTRACT_ADDRESS,
       abi: contractABI.abi,
       functionName: "withdrawFunds",
       args: [BigInt(billId)],

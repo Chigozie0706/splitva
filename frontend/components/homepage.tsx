@@ -10,7 +10,6 @@ export type ParticipantStatus = "pending" | "paid" | "overpaid" | "underpaid";
 export interface Participant {
   id: string;
   name: string;
-  phoneNumber?: string;
   share: number;
   amountPaid: number;
   status: ParticipantStatus;

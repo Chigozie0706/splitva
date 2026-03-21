@@ -8,8 +8,8 @@ import { HomeScreen } from "@/components/home-screen";
 import type { Bill } from "@/components/homepage";
 import contractABI from "../contract/abi.json";
 
-const SPLITPAY_ADDRESS =
-  "0xE47aa208f9B59b5857E6c54a5198a9a40F4c90C7" as `0x${string}`;
+const CONTRACT_ADDRESS =
+  "0x95c7208144D097fdD83f4cF78CF780FF5674D5F3" as `0x${string}`;
 
 const STABLECOIN: Record<string, Bill["currency"]> = {
   "0x765DE816845861e75A25fCA122bb6898B8B1282a": "cUSDm",
@@ -40,7 +40,6 @@ type ContractBillStatus = [
   amountsPaid: readonly bigint[],
   paymentStatus: readonly boolean[],
   names: readonly string[],
-  phoneNumbers: readonly string[],
 ];
 
 // Hook to load a single bill by ID
@@ -48,7 +47,7 @@ function useBill(billId: bigint | undefined): Bill | null {
   const enabled = !!billId && billId > BigInt(0);
 
   const { data: rawBill } = useReadContract({
-    address: SPLITPAY_ADDRESS,
+    address: CONTRACT_ADDRESS,
     abi: contractABI.abi,
     functionName: "getBill",
     args: billId ? [billId] : undefined,
@@ -56,7 +55,7 @@ function useBill(billId: bigint | undefined): Bill | null {
   });
 
   const { data: rawStatus } = useReadContract({
-    address: SPLITPAY_ADDRESS,
+    address: CONTRACT_ADDRESS,
     abi: contractABI.abi,
     functionName: "getBillStatus",
     args: billId ? [billId] : undefined,
@@ -67,7 +66,7 @@ function useBill(billId: bigint | undefined): Bill | null {
 
   const billData = rawBill as unknown as ContractBill;
   const statusData = rawStatus as unknown as ContractBillStatus;
-  const [addrs, amountsOwed, amountsPaid, , names, phoneNumbers] = statusData;
+  const [addrs, amountsOwed, amountsPaid, , names] = statusData;
 
   const participants = addrs.map((addr, i) => {
     const share = fromWei(amountsOwed[i]);
@@ -75,7 +74,6 @@ function useBill(billId: bigint | undefined): Bill | null {
     return {
       id: addr,
       name: names[i] || `${addr.slice(0, 6)}...`,
-      phoneNumber: phoneNumbers[i],
       share,
       amountPaid: paid,
       status:
@@ -129,7 +127,7 @@ export default function HomeClient() {
   }, []);
 
   const { data: rawBillIds, isLoading } = useReadContract({
-    address: SPLITPAY_ADDRESS,
+    address: CONTRACT_ADDRESS,
     abi: contractABI.abi,
     functionName: "getUserBills",
     args: address ? [address] : undefined,

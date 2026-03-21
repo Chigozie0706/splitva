@@ -47,7 +47,6 @@ export default function CreateBillPage() {
     return {
       id: `voice-${formKey}-${i}`,
       name,
-      phoneNumber: "",
       wallet: p.address === "0xPENDING" ? "" : p.address,
       share: p.share,
     };

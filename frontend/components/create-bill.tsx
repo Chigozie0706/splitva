@@ -24,7 +24,6 @@ import contractABI from "../contract/abi.json";
 interface ParticipantInput {
   id: string;
   name: string;
-  phoneNumber: string;
   wallet: string;
   share: number;
 }
@@ -42,7 +41,7 @@ const STABLECOIN_ADDRESSES: Record<Currency, Address> = {
   cREAL: "0xe8537a3d056DA446677B9E9d6c5dB704EaAb4787",
   cEUR: "0xD8763CBa276a3738E6DE85b4b3bF5FDed6D6cA73",
 };
-const CONTRACT_ADDRESS: Address = "0xE47aa208f9B59b5857E6c54a5198a9a40F4c90C7";
+const CONTRACT_ADDRESS: Address = "0x95c7208144D097fdD83f4cF78CF780FF5674D5F3";
 
 const inputStyle = {
   width: "100%",
@@ -83,9 +82,7 @@ export function CreateBill({
   const [totalAmount, setTotalAmount] = useState(defaultAmount || "");
 
   const [participants, setParticipants] = useState<ParticipantInput[]>(
-    defaultParticipants || [
-      { id: "1", name: "", phoneNumber: "", wallet: "", share: 0 },
-    ],
+    defaultParticipants || [{ id: "1", name: "", wallet: "", share: 0 }],
   );
   const [currency, setCurrency] = useState<Currency>("cUSDm");
   const [splitMethod, setSplitMethod] = useState<"equal" | "manual">(
@@ -188,7 +185,6 @@ export function CreateBill({
             wallet: p.wallet as Address,
             share: parseUnits(p.share.toString(), 18),
             name: p.name,
-            phoneNumber: p.phoneNumber || "0",
           })),
         ],
       });
@@ -534,7 +530,6 @@ export function CreateBill({
                   {
                     id: Date.now().toString(),
                     name: "",
-                    phoneNumber: "",
                     wallet: "",
                     share: 0,
                   },
@@ -692,34 +687,7 @@ export function CreateBill({
                       disabled={isProcessing}
                     />
                   </div>
-                  <div>
-                    <label
-                      style={{
-                        ...labelStyle,
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "4px",
-                      }}
-                    >
-                      <Phone size={10} /> PHONE (optional)
-                    </label>
-                    <input
-                      style={inputStyle}
-                      type="tel"
-                      value={p.phoneNumber}
-                      onChange={(e) =>
-                        setParticipants(
-                          participants.map((pp) =>
-                            pp.id === p.id
-                              ? { ...pp, phoneNumber: e.target.value }
-                              : pp,
-                          ),
-                        )
-                      }
-                      placeholder="+1234567890"
-                      disabled={isProcessing}
-                    />
-                  </div>
+
                   {splitMethod === "manual" && (
                     <div>
                       <label style={labelStyle}>AMOUNT TO PAY *</label>

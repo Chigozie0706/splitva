@@ -7,7 +7,7 @@ import { useAccount, useWriteContract, useWaitForTransactionReceipt } from "wagm
 import { parseUnits, Address } from "viem";
 import contractABI from "@/contract/abi.json";
 
-const CONTRACT_ADDRESS = "0xE47aa208f9B59b5857E6c54a5198a9a40F4c90C7" as Address;
+const CONTRACT_ADDRESS = "0x95c7208144D097fdD83f4cF78CF780FF5674D5F3" as Address;
 
 // Supported stablecoins on Celo
 const STABLECOIN_ADDRESSES: Record<string, Address> = {
@@ -75,7 +75,7 @@ export function useBillAgent() {
         const totalAmountWei = parseUnits(bill.totalAmount.toFixed(6), 18);
 
         // Build participants array for the contract
-        // Contract requires: wallet, share (wei), name, phoneNumber
+        // Contract requires: wallet, share (wei), name
         const participants = bill.participants.map((p) => ({
           wallet: p.address as Address,
           share: parseUnits(p.share.toFixed(6), 18),
@@ -86,7 +86,6 @@ export function useBillAgent() {
             (p.address.startsWith("0x")
               ? `${p.address.slice(0, 6)}...${p.address.slice(-4)}`
               : p.address),
-          phoneNumber: "0", // contract requires non-empty string
         }));
 
         // Validate all addresses are real before submitting

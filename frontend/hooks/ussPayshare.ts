@@ -7,7 +7,7 @@ import { useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { parseUnits, Address } from "viem";
 import contractABI from "@/contract/abi.json";
 
-const CONTRACT_ADDRESS = "0xE47aa208f9B59b5857E6c54a5198a9a40F4c90C7" as Address;
+const CONTRACT_ADDRESS = "0x95c7208144D097fdD83f4cF78CF780FF5674D5F3" as Address;
 
 // Minimal ERC20 ABI for approve
 const ERC20_ABI = [

@@ -7,7 +7,7 @@ import { useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { parseUnits, Address } from "viem";
 import contractABI from "@/contract/abi.json";
 
-const SPLITPAY_ADDRESS = "0xE47aa208f9B59b5857E6c54a5198a9a40F4c90C7" as Address;
+const CONTRACT_ADDRESS = "0x95c7208144D097fdD83f4cF78CF780FF5674D5F3" as Address;
 
 const ERC20_ABI = [{
   name: "approve", type: "function", stateMutability: "nonpayable",
@@ -141,13 +141,13 @@ export function useVoiceSettle() {
         address: stablecoinAddress,
         abi: ERC20_ABI,
         functionName: "approve",
-        args: [SPLITPAY_ADDRESS, amountWei],
+        args: [CONTRACT_ADDRESS, amountWei],
       });
 
       // Step 2: payShare
       setStatus("paying");
       const hash = await writeContractAsync({
-        address: SPLITPAY_ADDRESS,
+        address: CONTRACT_ADDRESS,
         abi: contractABI.abi,
         functionName: "payShare",
         args: [billId, amountWei],

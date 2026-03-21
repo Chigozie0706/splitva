@@ -75,11 +75,7 @@ export function ParticipantCard({
               </span>
             )}
           </div>
-          {participant.phoneNumber && (
-            <div className="text-gray-400 text-sm">
-              {participant.phoneNumber}
-            </div>
-          )}
+
           <div className="text-gray-400 text-xs font-mono mt-0.5">
             {participant.id.slice(0, 6)}...{participant.id.slice(-4)}
           </div>
