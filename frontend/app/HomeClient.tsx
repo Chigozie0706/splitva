@@ -9,14 +9,13 @@ import type { Bill } from "@/components/homepage";
 import contractABI from "../contract/abi.json";
 
 const CONTRACT_ADDRESS =
-  "0x95c7208144D097fdD83f4cF78CF780FF5674D5F3" as `0x${string}`;
+  "0x9C00E479dBD8d0dFf5b87Fc097D6039aBB661217" as `0x${string}`;
 
 const STABLECOIN: Record<string, Bill["currency"]> = {
-  "0x765DE816845861e75A25fCA122bb6898B8B1282a": "cUSDm",
-  "0xdE9e4C3ce781b4bA68120d6261cbad65ce0aB00b": "cUSDm",
-  "0x456a3D042C0DbD3db53D5489e98dFb038553B0d0": "cKES",
-  "0xe8537a3d056DA446677B9E9d6c5dB704EaAb4787": "cREAL",
-  "0xD8763CBa276a3738E6DE85b4b3bF5FDed6D6cA73": "cEUR",
+  "0x765DE816845861e75A25fCA122bb6898B8B1282a": "cUSDm", // Mento Dollar (was cUSD)
+  "0x456a3D042C0DbD3db53D5489e98dFb038553B0d0": "cKES", // Mento Kenyan Shilling ✓
+  "0xe8537a3d056DA446677B9E9d6c5dB704EaAb4787": "cREAL", // Mento Brazilian Real (NOT cREAL)
+  "0xD8763CBa276a3738E6DE85b4b3bF5FDed6D6cA73": "cEUR", // Mento Euro ✓
 };
 
 const fromWei = (raw: bigint) => Number(raw) / 1e18;

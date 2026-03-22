@@ -2,9 +2,7 @@
 
 > Voice-powered group expense splitting on Celo — say it, split it, settle it.
 
-[![Live App](https://img.shields.io/badge/Live%20App-splitva.vercel.app-f59e0b?style=for-the-badge)](https://splitva.vercel.app)
-[![Celo](https://img.shields.io/badge/Celo-Mainnet-35D07F?style=for-the-badge)](https://celoscan.io/address/0xE47aa208f9B59b5857E6c54a5198a9a40F4c90C7)
-[![Farcaster](https://img.shields.io/badge/Farcaster-Miniapp-8A63D2?style=for-the-badge)](https://farcaster.xyz/~/developers/mini-apps/preview?url=https://splitva.vercel.app)
+[![Farcaster](https://img.shields.io/badge/Farcaster-Miniapp-8A63D2?style=for-the-badge)](https://farcaster.xyz/miniapps/62-dELE6j2Bt/splitva)
 
 ---
 
@@ -91,7 +89,7 @@ The AI agent transcribes, parses, resolves Farcaster usernames to wallet address
 **SplitPay.sol** — deployed on Celo Mainnet
 
 ```
-Address: 0xE47aa208f9B59b5857E6c54a5198a9a40F4c90C7
+Address: 0x9C00E479dBD8d0dFf5b87Fc097D6039aBB661217
 ```
 
 | Function          | Description                                            |
